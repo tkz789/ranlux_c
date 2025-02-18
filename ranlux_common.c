@@ -253,7 +253,7 @@ void rlx_update(rlx_state_t *s)
                          "m" (pmax[0][3]),
                          "m" (mask)
                          :
-                         "ymm12", "ymm14", "ymm15");
+                         "ymm12", "ymm15");
 
    for (k=0;k<=(pr-12);k+=12)
    {
