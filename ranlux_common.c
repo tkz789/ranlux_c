@@ -84,7 +84,6 @@
 #include <math.h>
 #include "ranlux.h"
 
-static const int64_t base=(int64_t)(0x1000000000000);
 static const int64_t mask=(int64_t)(0xffffffffffff);
 
 
@@ -245,15 +244,13 @@ void rlx_update(rlx_state_t *s)
    avx_load_state(%%ymm11,xmm11);
 
    __asm__ __volatile__ ("vmovdqa %0, %%ymm12 \n\t"
-                         "vbroadcastsd %4, %%ymm14 \n\t"
-                         "vbroadcastsd %5, %%ymm15"
+                         "vbroadcastsd %4, %%ymm15"
                          :
                          :
                          "m" (pmax[0][0]),
                          "m" (pmax[0][1]),
                          "m" (pmax[0][2]),
                          "m" (pmax[0][3]),
-                         "m" (base),
                          "m" (mask)
                          :
                          "ymm12", "ymm14", "ymm15");
@@ -272,10 +269,6 @@ void rlx_update(rlx_state_t *s)
                             "vpsrlq $63, %%ymm2, %%ymm12 \n\t"
                             "vpsubq %%ymm12, %%ymm3, %%ymm3 \n\t"
                             "vpsrlq $63, %%ymm3, %%ymm12 \n\t"
-                            "vpaddq %%ymm14, %%ymm0, %%ymm0 \n\t"
-                            "vpaddq %%ymm14, %%ymm1, %%ymm1 \n\t"
-                            "vpaddq %%ymm14, %%ymm2, %%ymm2 \n\t"
-                            "vpaddq %%ymm14, %%ymm3, %%ymm3 \n\t"
                             "vpand %%ymm15, %%ymm0, %%ymm0 \n\t"
                             "vpand %%ymm15, %%ymm1, %%ymm1 \n\t"
                             "vpand %%ymm15, %%ymm2, %%ymm2 \n\t"
@@ -297,10 +290,6 @@ void rlx_update(rlx_state_t *s)
                             "vpsrlq $63, %%ymm6, %%ymm12 \n\t"
                             "vpsubq %%ymm12, %%ymm7, %%ymm7 \n\t"
                             "vpsrlq $63, %%ymm7, %%ymm12 \n\t"
-                            "vpaddq %%ymm14, %%ymm4, %%ymm4 \n\t"
-                            "vpaddq %%ymm14, %%ymm5, %%ymm5 \n\t"
-                            "vpaddq %%ymm14, %%ymm6, %%ymm6 \n\t"
-                            "vpaddq %%ymm14, %%ymm7, %%ymm7 \n\t"
                             "vpand %%ymm15, %%ymm4, %%ymm4 \n\t"
                             "vpand %%ymm15, %%ymm5, %%ymm5 \n\t"
                             "vpand %%ymm15, %%ymm6, %%ymm6 \n\t"
@@ -322,10 +311,6 @@ void rlx_update(rlx_state_t *s)
                             "vpsrlq $63, %%ymm10, %%ymm12 \n\t"
                             "vpsubq %%ymm12, %%ymm11, %%ymm11 \n\t"
                             "vpsrlq $63, %%ymm11, %%ymm12 \n\t"
-                            "vpaddq %%ymm14, %%ymm8, %%ymm8 \n\t"
-                            "vpaddq %%ymm14, %%ymm9, %%ymm9 \n\t"
-                            "vpaddq %%ymm14, %%ymm10, %%ymm10 \n\t"
-                            "vpaddq %%ymm14, %%ymm11, %%ymm11 \n\t"
                             "vpand %%ymm15, %%ymm8, %%ymm8 \n\t"
                             "vpand %%ymm15, %%ymm9, %%ymm9 \n\t"
                             "vpand %%ymm15, %%ymm10, %%ymm10 \n\t"
@@ -363,9 +348,8 @@ void rlx_update(rlx_state_t *s)
 
       __asm__ __volatile__ ("vpsubq %4, %%ymm0, %%ymm1 \n\t"
                             "vpsubq %%ymm12, %%ymm1, %%ymm2 \n\t"
-                            "vpaddq %%ymm14, %%ymm2, %%ymm1 \n\t"
                             "vpsrlq $63, %%ymm2, %%ymm12 \n\t"
-                            "vpand %%ymm15, %%ymm1, %%ymm3 \n\t"
+                            "vpand %%ymm15, %%ymm2, %%ymm3 \n\t"
                             "vmovdqa %%ymm3, %0"
                             :
                             "=m" (pi[0][0]),
@@ -404,7 +388,7 @@ void rlx_update(rlx_state_t *s)
 void rlx_update(rlx_state_t *s)
 {
    int pr,ir,k;
-   int64_t shift,(*pmin)[4],(*pmax)[4],(*pi)[4],(*pj)[4];
+   int64_t (*pmin)[4],(*pmax)[4],(*pi)[4],(*pj)[4];
 
    pr=(*s).pr;
    ir=(*s).ir;
@@ -417,27 +401,20 @@ void rlx_update(rlx_state_t *s)
    else
       pj=pi+7;
 
-   shift=(int64_t)(63);
 
-   __asm__ __volatile__ ("movq %0, %%xmm5 \n\t"
-                         "movq %1, %%xmm6 \n\t"
-                         "movq %2, %%xmm7 \n\t"
-                         "movdqa %3, %%xmm3 \n\t"
-                         "movdqa %5, %%xmm4 \n\t"
-                         "shufpd $0x0, %%xmm6, %%xmm6 \n\t"
+   __asm__ __volatile__ ("movq %0, %%xmm7 \n\t"
+                         "movdqa %1, %%xmm3 \n\t"
+                         "movdqa %3, %%xmm4 \n\t"
                          "shufpd $0x0, %%xmm7, %%xmm7"
                          :
                          :
-                         "m" (shift),
-                         "m" (base),
                          "m" (mask),
                          "m" (pmax[0][0]),
                          "m" (pmax[0][1]),
                          "m" (pmax[0][2]),
                          "m" (pmax[0][3])
                          :
-                         "xmm3", "xmm4", "xmm5",
-                         "xmm6", "xmm7");
+                         "xmm3", "xmm4","xmm7");
 
    for (k=0;k<pr;k++)
    {
@@ -467,10 +444,8 @@ void rlx_update(rlx_state_t *s)
                             :
                             "xmm0", "xmm1", "xmm3", "xmm4");
 
-      __asm__ __volatile__ ("paddq %%xmm6, %%xmm0 \n\t"
-                            "paddq %%xmm6, %%xmm1 \n\t"
-                            "psrlq %%xmm5, %%xmm3 \n\t"
-                            "psrlq %%xmm5, %%xmm4 \n\t"
+      __asm__ __volatile__ ("psrlq $63, %%xmm3 \n\t"
+                            "psrlq $63, %%xmm4 \n\t"
                             "pand %%xmm7, %%xmm0 \n\t"
                             "pand %%xmm7, %%xmm1 \n\t"
                             "movdqa %%xmm0, %0 \n\t"
@@ -508,7 +483,7 @@ void rlx_update(rlx_state_t *s)
 void rlx_update(rlx_state_t *s)
 {
    int pr,ir,k;
-   int64_t d[4],(*pmin)[4],(*pmax)[4],(*pi)[4],(*pj)[4];
+   int64_t d[4],last[4],(*pmin)[4],(*pmax)[4],(*pi)[4],(*pj)[4];
 
    pr=(*s).pr;
    ir=(*s).ir;
@@ -520,21 +495,26 @@ void rlx_update(rlx_state_t *s)
       pj=pi-5;
    else
       pj=pi+7;
+   
+   last[0]=pmax[0][0];
+   last[1]=pmax[0][1];
+   last[2]=pmax[0][2];
+   last[3]=pmax[0][3];
 
    for (k=0;k<pr;k++)
    {
-      d[0]=pj[0][0]-pi[0][0]-pmax[0][0];
-      d[1]=pj[0][1]-pi[0][1]-pmax[0][1];
-      d[2]=pj[0][2]-pi[0][2]-pmax[0][2];
-      d[3]=pj[0][3]-pi[0][3]-pmax[0][3];
-      pmax[0][0]=(d[0]<0);
-      pmax[0][1]=(d[1]<0);
-      pmax[0][2]=(d[2]<0);
-      pmax[0][3]=(d[3]<0);
-      pi[0][0]=(d[0]+base)&mask;
-      pi[0][1]=(d[1]+base)&mask;
-      pi[0][2]=(d[2]+base)&mask;
-      pi[0][3]=(d[3]+base)&mask;
+      d[0]=pj[0][0]-pi[0][0]-last[0];
+      d[1]=pj[0][1]-pi[0][1]-last[1];
+      d[2]=pj[0][2]-pi[0][2]-last[2];
+      d[3]=pj[0][3]-pi[0][3]-last[3];
+      last[0]=(d[0]<0);
+      last[1]=(d[1]<0);
+      last[2]=(d[2]<0);
+      last[3]=(d[3]<0);
+      pi[0][0]=(d[0])&mask;
+      pi[0][1]=(d[1])&mask;
+      pi[0][2]=(d[2])&mask;
+      pi[0][3]=(d[3])&mask;
 
       pj+=1;
       if (pj==pmax)
@@ -544,6 +524,11 @@ void rlx_update(rlx_state_t *s)
       if (pi==pmax)
          pi=pmin;
    }
+
+   pmax[0][0]=last[0];
+   pmax[0][1]=last[1];
+   pmax[0][2]=last[2];
+   pmax[0][3]=last[3];
 
    (*s).ir=(ir+pr)%12;
 }
