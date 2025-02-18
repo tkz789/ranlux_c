@@ -48,7 +48,6 @@
 
 #define RANLXS_C
 
-#include <stdlib.h>
 #include "ranlux.h"
 
 static int init=0,is,is_old,next[96];
@@ -99,7 +98,10 @@ void ranlxs(float *r,int n)
 
    for (k=0;k<n;k++)
    {
-      is=next[is];
+      is++;
+      if (is >= 96){
+         is = 0;
+      }
 
       if (is==is_old)
       {

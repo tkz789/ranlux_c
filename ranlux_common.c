@@ -67,31 +67,31 @@
 *   int pr;                      Half of the RANLUX p-value.
 *   int ir;                      Index of the random number to be
 *                                updated next (0<=ir<12).
-*   int8_t (*state)[4];          Current state vectors and carry bits.
+*   int64_t (*state)[4];          Current state vectors and carry bits.
 *
 * The last index of the state array labels the 4 copies of the generator.
 * After allocation, the state array has length 13, the last element being
-* reserved for the carry bits. The data type int8_t is defined in ranlux.h
-* and usually is an integer data type of size 8.
+* reserved for the carry bits. 
 *
 *******************************************************************************/
 
 #define RANLUX_COMMON_C
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <float.h>
 #include <math.h>
 #include "ranlux.h"
 
-static const int8_t base=(int8_t)(0x1000000000000);
-static const int8_t mask=(int8_t)(0xffffffffffff);
+static const int64_t base=(int64_t)(0x1000000000000);
+static const int64_t mask=(int64_t)(0xffffffffffff);
 
 
 int rlx_check_machine(void)
 {
 #if ((defined AVX2)||(defined SSE2))
-   if ((sizeof(int*)>sizeof(unsigned long))||(sizeof(int8_t)!=8))
+   if ((sizeof(int*)>sizeof(unsigned long))||(sizeof(int64_t)!=8))
       return 1;
 #endif
 
@@ -105,7 +105,7 @@ int rlx_check_machine(void)
 }
 
 
-void rlx_error(int test,int no,char *name,char *message)
+void rlx_error(int test,int no,const char *name,const char *message)
 {
    if (test)
    {
@@ -119,20 +119,20 @@ void rlx_error(int test,int no,char *name,char *message)
 
 void rlx_alloc_state(rlx_state_t *s)
 {
-   int8_t (*state)[4];
+   int64_t (*state)[4];
 
 #if ((defined AVX2)||(defined SSE2))
    char *addr;
    unsigned long mask;
 
-   addr=malloc(13*sizeof(*state)+32);
+   addr=(char*)malloc(13*sizeof(*state)+32);
    rlx_error(addr==NULL,1,"rlx_alloc_state [ranlux_common.c]",
              "Unable to allocate state array");
 
    mask=(unsigned long)(31);
-   (*s).state=(int8_t(*)[4])(((unsigned long)(addr+32))&(~mask));
+   (*s).state=(int64_t(*)[4])(((unsigned long)(addr+32))&(~mask));
 #else
-   (*s).state=malloc(13*sizeof(*state));
+   (*s).state=(int64_t(*)[4])malloc(13*sizeof(*state));
    rlx_error((*s).state==NULL,1,"rlx_alloc_state [ranlux_common.c]",
              "Unable to allocate state array");
 #endif
@@ -143,7 +143,7 @@ void rlx_init(rlx_state_t *s,int seed,int flag)
 {
    int i,k,l,ix,iy;
    int ibit,jbit,xbit[31];
-   int8_t (*state)[4];
+   int64_t (*state)[4];
 
    for (k=0;k<31;k++)
    {
@@ -175,16 +175,16 @@ void rlx_init(rlx_state_t *s,int seed,int flag)
             ix=16777215-ix;
 
          if (k&0x1)
-            state[k/2][i]+=((int8_t)(ix)<<24);
+            state[k/2][i]+=((int64_t)(ix)<<24);
          else
-            state[k/2][i]=(int8_t)(ix);
+            state[k/2][i]=(int64_t)(ix);
       }
    }
 
-   (*s).state[12][0]=(int8_t)(0);
-   (*s).state[12][1]=(int8_t)(0);
-   (*s).state[12][2]=(int8_t)(0);
-   (*s).state[12][3]=(int8_t)(0);
+   (*s).state[12][0]=(int64_t)(0);
+   (*s).state[12][1]=(int64_t)(0);
+   (*s).state[12][2]=(int64_t)(0);
+   (*s).state[12][3]=(int64_t)(0);
    (*s).ir=0;
 }
 
@@ -217,7 +217,7 @@ void rlx_init(rlx_state_t *s,int seed,int flag)
 void rlx_update(rlx_state_t *s)
 {
    int pr,ir,k;
-   int8_t (*pmin)[4],(*pmax)[4],(*pi)[4],(*pj)[4];
+   int64_t (*pmin)[4],(*pmax)[4],(*pi)[4],(*pj)[4];
 
    pr=(*s).pr;
    ir=(*s).ir;
@@ -256,7 +256,7 @@ void rlx_update(rlx_state_t *s)
                          "m" (base),
                          "m" (mask)
                          :
-                         "xmm12", "xmm14", "xmm15");
+                         "ymm12", "ymm14", "ymm15");
 
    for (k=0;k<=(pr-12);k+=12)
    {
@@ -283,7 +283,7 @@ void rlx_update(rlx_state_t *s)
                             :
                             :
                             :
-                            "xmm0", "xmm1", "xmm2", "xmm3", "xmm12");
+                            "ymm0", "ymm1", "ymm2", "ymm3", "ymm12");
 
       __asm__ __volatile__ ("vpsubq %%ymm4, %%ymm11, %%ymm4 \n\t"
                             "vpsubq %%ymm5, %%ymm0, %%ymm5 \n\t"
@@ -308,7 +308,7 @@ void rlx_update(rlx_state_t *s)
                             :
                             :
                             :
-                            "xmm4", "xmm5", "xmm6", "xmm7", "xmm12");
+                            "ymm4", "ymm5", "ymm6", "ymm7", "ymm12");
 
       __asm__ __volatile__ ("vpsubq %%ymm8, %%ymm3, %%ymm8 \n\t"
                             "vpsubq %%ymm9, %%ymm4, %%ymm9 \n\t"
@@ -333,7 +333,7 @@ void rlx_update(rlx_state_t *s)
                             :
                             :
                             :
-                            "xmm8", "xmm9", "xmm10", "xmm11", "xmm12");
+                            "ymm8", "ymm9", "ymm10", "ymm11", "ymm12");
    }
 
    avx_store_state(%%ymm0);
@@ -378,7 +378,7 @@ void rlx_update(rlx_state_t *s)
                             "m" (pi[0][2]),
                             "m" (pi[0][3])
                             :
-                            "xmm1", "xmm2", "xmm3", "xmm12");
+                            "ymm1", "ymm2", "ymm3", "ymm12");
 
       pj+=1;
       if (pj==pmax)
@@ -404,7 +404,7 @@ void rlx_update(rlx_state_t *s)
 void rlx_update(rlx_state_t *s)
 {
    int pr,ir,k;
-   int8_t shift,(*pmin)[4],(*pmax)[4],(*pi)[4],(*pj)[4];
+   int64_t shift,(*pmin)[4],(*pmax)[4],(*pi)[4],(*pj)[4];
 
    pr=(*s).pr;
    ir=(*s).ir;
@@ -417,7 +417,7 @@ void rlx_update(rlx_state_t *s)
    else
       pj=pi+7;
 
-   shift=(int8_t)(63);
+   shift=(int64_t)(63);
 
    __asm__ __volatile__ ("movq %0, %%xmm5 \n\t"
                          "movq %1, %%xmm6 \n\t"
@@ -508,7 +508,7 @@ void rlx_update(rlx_state_t *s)
 void rlx_update(rlx_state_t *s)
 {
    int pr,ir,k;
-   int8_t d[4],(*pmin)[4],(*pmax)[4],(*pi)[4],(*pj)[4];
+   int64_t d[4],(*pmin)[4],(*pmax)[4],(*pi)[4],(*pj)[4];
 
    pr=(*s).pr;
    ir=(*s).ir;
@@ -555,12 +555,12 @@ void rlx_update(rlx_state_t *s)
 void rlx_converts(rlx_state_t *s,float *rs)
 {
    int k;
-   int8_t lmask,shift,(*state)[4];
+   int64_t lmask,shift,(*state)[4];
    float onebit;
 
    onebit=(float)(ldexp(1.0,-24));
-   lmask=(int8_t)(0xffffff);
-   shift=(int8_t)(24);
+   lmask=(int64_t)(0xffffff);
+   shift=(int64_t)(24);
    state=(*s).state;
 
    __asm__ __volatile__ ("movq %0, %%xmm5 \n\t"
@@ -626,9 +626,9 @@ void rlx_converts(rlx_state_t *s,float *rs)
 void rlx_convertd(rlx_state_t *s,double *rd)
 {
    int k;
-   int8_t sexp,(*state)[4];
+   int64_t sexp,(*state)[4];
 
-   sexp=(int8_t)(0x4030000000000000);
+   sexp=(int64_t)(0x4030000000000000);
    state=(*s).state;
 
    __asm__ __volatile__ ("movq %0, %%xmm6 \n\t"
@@ -695,11 +695,11 @@ void rlx_convertd(rlx_state_t *s,double *rd)
 void rlx_converts(rlx_state_t *s,float *rs)
 {
    int k;
-   int8_t lmask,(*state)[4];
+   int64_t lmask,(*state)[4];
    float onebit;
 
    onebit=(float)(ldexp(1.0,-24));
-   lmask=(int8_t)(0xffffff);
+   lmask=(int64_t)(0xffffff);
    state=(*s).state;
 
    for (k=0;k<12;k++)
@@ -723,7 +723,7 @@ void rlx_converts(rlx_state_t *s,float *rs)
 void rlx_convertd(rlx_state_t *s,double *rd)
 {
    int k;
-   int8_t (*state)[4];
+   int64_t (*state)[4];
    double onebit;
 
    onebit=ldexp(1.0,-48);
@@ -746,9 +746,9 @@ void rlx_convertd(rlx_state_t *s,double *rd)
 void rlx_get_state(rlx_state_t *s,int *is)
 {
    int k;
-   int8_t lmask,(*state)[4];
+   int64_t lmask,(*state)[4];
 
-   lmask=(int8_t)(0xffffff);
+   lmask=(int64_t)(0xffffff);
    state=(*s).state;
 
    for (k=0;k<12;k++)
@@ -777,7 +777,7 @@ void rlx_get_state(rlx_state_t *s,int *is)
 void rlx_set_state(int *is,rlx_state_t *s)
 {
    int ie,k,lbase;
-   int8_t (*state)[4];
+   int64_t (*state)[4];
 
    ie=0;
    lbase=0x1000000;
@@ -796,22 +796,22 @@ void rlx_set_state(int *is,rlx_state_t *s)
 
    for (k=0;k<12;k++)
    {
-      (*state)[0]=(int8_t)(is[0]);
-      (*state)[1]=(int8_t)(is[1]);
-      (*state)[2]=(int8_t)(is[2]);
-      (*state)[3]=(int8_t)(is[3]);
+      (*state)[0]=(int64_t)(is[0]);
+      (*state)[1]=(int64_t)(is[1]);
+      (*state)[2]=(int64_t)(is[2]);
+      (*state)[3]=(int64_t)(is[3]);
 
-      (*state)[0]+=((int8_t)(is[4])<<24);
-      (*state)[1]+=((int8_t)(is[5])<<24);
-      (*state)[2]+=((int8_t)(is[6])<<24);
-      (*state)[3]+=((int8_t)(is[7])<<24);
+      (*state)[0]+=((int64_t)(is[4])<<24);
+      (*state)[1]+=((int64_t)(is[5])<<24);
+      (*state)[2]+=((int64_t)(is[6])<<24);
+      (*state)[3]+=((int64_t)(is[7])<<24);
 
       is+=8;
       state+=1;
    }
 
-   (*state)[0]=(int8_t)(is[0]);
-   (*state)[1]=(int8_t)(is[1]);
-   (*state)[2]=(int8_t)(is[2]);
-   (*state)[3]=(int8_t)(is[3]);
+   (*state)[0]=(int64_t)(is[0]);
+   (*state)[1]=(int64_t)(is[1]);
+   (*state)[2]=(int64_t)(is[2]);
+   (*state)[3]=(int64_t)(is[3]);
 }
