@@ -42,8 +42,8 @@ extern void rlx_error(int test, int no, const char *name, const char *format);
 extern void rlx_alloc_state(rlx_state_t *s);
 extern void rlx_init(rlx_state_t *s, int seed, int flag);
 extern void rlx_update(rlx_state_t *s);
-extern void rlx_converts(rlx_state_t *s, float *rs);
-extern void rlx_convertd(rlx_state_t *s, double *rd);
+extern void rlx_converts(const rlx_state_t *s, float *rs);
+extern void rlx_convertd(const rlx_state_t *s, double *rd);
 extern void rlx_get_state(rlx_state_t *s, int *is);
 extern void rlx_set_state(int *is, rlx_state_t *s);
 

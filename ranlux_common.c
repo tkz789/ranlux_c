@@ -537,7 +537,7 @@ void rlx_update(rlx_state_t *s)
 
 #if ((defined AVX2)||(defined SSE2))
 
-void rlx_converts(rlx_state_t *s,float *rs)
+void rlx_converts(const rlx_state_t *const s,float *rs)
 {
    int k;
    int64_t lmask,shift,(*state)[4];
@@ -606,9 +606,79 @@ void rlx_converts(rlx_state_t *s,float *rs)
       rs+=8;
    }
 }
+#else
 
+void rlx_converts(const rlx_state_t *const s,float *rs)
+{
+   int k;
+   int64_t lmask,(*state)[4];
+   float onebit;
 
-void rlx_convertd(rlx_state_t *s,double *rd)
+   onebit=(float)(ldexp(1.0,-24));
+   lmask=(int64_t)(0xffffff);
+   state=(*s).state;
+
+   for (k=0;k<12;k++)
+   {
+      rs[0]=(float)((*state)[0]&lmask)*onebit;
+      rs[1]=(float)((*state)[1]&lmask)*onebit;
+      rs[2]=(float)((*state)[2]&lmask)*onebit;
+      rs[3]=(float)((*state)[3]&lmask)*onebit;
+
+      rs[4]=(float)((*state)[0]>>24)*onebit;
+      rs[5]=(float)((*state)[1]>>24)*onebit;
+      rs[6]=(float)((*state)[2]>>24)*onebit;
+      rs[7]=(float)((*state)[3]>>24)*onebit;
+
+      rs+=8;
+      state+=1;
+   }
+}
+#endif
+#ifdef AVX2
+
+void rlx_convertd(const rlx_state_t *const s, double *rd){
+   const int64_t sexp = (int64_t)(0x4030000000000000);
+   __asm__ __volatile__ ("vbroadcastsd %0, %%ymm0 \n\t"
+                         "vmovapd %%ymm0, %%ymm1"
+                         :
+                         :
+                         "m" (sexp)
+                         : "ymm0", "ymm1");
+   int64_t (*state)[4] = (*s).state;
+   for (int k=0; k<6; k++){
+      __asm__ __volatile__ ("vxorpd %8, %%ymm0, %%ymm2 \n\t"
+                            "vxorpd %12, %%ymm1, %%ymm3 \n\t"
+                            "vsubpd %%ymm0, %%ymm2, %%ymm2 \n\t"
+                            "vsubpd %%ymm1, %%ymm3, %%ymm3 \n\t"
+                            "vmovupd %%ymm2, %0 \n\t"
+                            "vmovupd %%ymm3, %4 "
+                            :
+                            "=m" (rd[0]),
+                            "=m" (rd[1]),
+                            "=m" (rd[2]),
+                            "=m" (rd[3]),
+                            "=m" (rd[4]),
+                            "=m" (rd[5]),
+                            "=m" (rd[6]),
+                            "=m" (rd[7])
+                            :
+                            "m" (state[0][0]),
+                            "m" (state[0][1]),
+                            "m" (state[0][2]),
+                            "m" (state[0][3]),
+                            "m" (state[1][0]),
+                            "m" (state[1][1]),
+                            "m" (state[1][2]),
+                            "m" (state[1][3])
+                            :"ymm2", "ymm3");
+      rd += 8;
+      state += 2;
+   }
+}
+#elif (defined SSE2)
+
+void rlx_convertd(const rlx_state_t *const s,double *rd)
 {
    int k;
    int64_t sexp,(*state)[4];
@@ -622,7 +692,7 @@ void rlx_convertd(rlx_state_t *s,double *rd)
                          "shufpd $0x0, %%xmm7, %%xmm7"
                          :
                          :
-                         "m" (sexp)
+                         "r" (sexp)
                          :
                          "xmm6", "xmm7");
 
@@ -677,35 +747,8 @@ void rlx_convertd(rlx_state_t *s,double *rd)
 
 #else
 
-void rlx_converts(rlx_state_t *s,float *rs)
-{
-   int k;
-   int64_t lmask,(*state)[4];
-   float onebit;
 
-   onebit=(float)(ldexp(1.0,-24));
-   lmask=(int64_t)(0xffffff);
-   state=(*s).state;
-
-   for (k=0;k<12;k++)
-   {
-      rs[0]=(float)((*state)[0]&lmask)*onebit;
-      rs[1]=(float)((*state)[1]&lmask)*onebit;
-      rs[2]=(float)((*state)[2]&lmask)*onebit;
-      rs[3]=(float)((*state)[3]&lmask)*onebit;
-
-      rs[4]=(float)((*state)[0]>>24)*onebit;
-      rs[5]=(float)((*state)[1]>>24)*onebit;
-      rs[6]=(float)((*state)[2]>>24)*onebit;
-      rs[7]=(float)((*state)[3]>>24)*onebit;
-
-      rs+=8;
-      state+=1;
-   }
-}
-
-
-void rlx_convertd(rlx_state_t *s,double *rd)
+void rlx_convertd(const rlx_state_t *const s,double *rd)
 {
    int k;
    int64_t (*state)[4];
