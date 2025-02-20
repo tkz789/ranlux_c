@@ -1,4 +1,4 @@
-This is a c++ - compatible version of ranlux3.8 made by Martin Luesher.
+This is a c++ - compatible version of ranlux3.8 made by Martin Lüscher.
 
 I made some changes to make original c code compilable both with gcc and g++, as well as introduced some performance optimisations, resulting in an overall performance gains of about 20% for avx2 version.
 
