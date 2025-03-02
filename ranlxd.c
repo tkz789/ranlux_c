@@ -50,7 +50,7 @@
 
 #include "ranlux.h"
 
-static int init=0,is,is_old,next[48];
+static int init=0,is,is_old;
 #if ((defined AVX2)||(defined SSE2))
 static double rd[48] __attribute__ ((aligned (16)));
 #else
@@ -61,8 +61,6 @@ static rlx_state_t rstate;
 
 void rlxd_init(int level,int seed)
 {
-   int k;
-
    rlx_error(rlx_check_machine(),1,"rlxd_init [ranlxd.c]",
              "Machine does not support the required data types");
    rlx_error((level<1)||(level>2)||(seed<1)||(seed>0x7fffffff),1,
@@ -77,9 +75,6 @@ void rlxd_init(int level,int seed)
       rlx_alloc_state(&rstate);
    rlx_init(&rstate,seed,1);
 
-   for (k=0;k<47;k++)
-      next[k]=k+1;
-   next[47]=0;
 
    is=47;
    is_old=0;
@@ -134,7 +129,7 @@ void rlxd_get(int *state)
 
 void rlxd_reset(int *state)
 {
-   int ie,k;
+   int ie;
 
    rlx_error(rlx_check_machine(),1,"rlxd_reset [ranlxd.c]",
              "Machine does not support the required data types");
@@ -154,9 +149,6 @@ void rlxd_reset(int *state)
    is=state[103];
    is_old=4*rstate.ir;
 
-   for (k=0;k<47;k++)
-      next[k]=k+1;
-   next[47]=0;
 
    rlx_convertd(&rstate,rd);
    init=1;
